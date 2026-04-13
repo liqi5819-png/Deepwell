@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -42,24 +42,26 @@ def load_extraction_items(file_path: str | Path = EXTRACTION_ITEMS_FILE) -> list
     return items
 
 
-def normalize_user_inputs(raw_data: Any) -> list[dict[str, Any]]:
-    """兼容单用户 dict 和多用户 list[dict] 两种输入。"""
-
+def _normalize_dict_list(raw_data: Any, label: str) -> list[dict[str, Any]]:
     if isinstance(raw_data, dict):
         return [raw_data]
     if isinstance(raw_data, list) and all(isinstance(item, dict) for item in raw_data):
         return raw_data
-    raise FrameworkInputError("输入 JSON 必须是单个用户对象，或由多个用户对象组成的数组。")
+    raise FrameworkInputError(
+        f"{label} JSON 必须是单个对象，或由多个对象组成的数组。"
+    )
+
+
+def normalize_user_inputs(raw_data: Any) -> list[dict[str, Any]]:
+    """兼容单用户 dict 和多用户 list[dict] 两种输入。"""
+
+    return _normalize_dict_list(raw_data, "输入")
 
 
 def normalize_route_inputs(raw_data: Any) -> list[dict[str, Any]]:
     """兼容单路由 dict 和多路由 list[dict] 两种输入。"""
 
-    if isinstance(raw_data, dict):
-        return [raw_data]
-    if isinstance(raw_data, list) and all(isinstance(item, dict) for item in raw_data):
-        return raw_data
-    raise FrameworkInputError("路由 JSON 必须是单个路由对象，或由多个路由对象组成的数组。")
+    return _normalize_dict_list(raw_data, "路由")
 
 
 def build_user_summary(user_data: dict[str, Any], user_index: int) -> dict[str, Any]:
@@ -108,6 +110,7 @@ def build_framework_payload(
     users_data: list[dict[str, Any]],
     route_results: list[dict[str, Any]] | None = None,
     extraction_items: list[str] | None = None,
+    validate_inputs: bool = True,
 ) -> dict[str, Any]:
     """构建交给 LLM 的上下文载荷。"""
 
@@ -118,7 +121,8 @@ def build_framework_payload(
 
     users_payload: list[dict[str, Any]] = []
     for index, user_data in enumerate(users_data):
-        validate_user_data(user_data)
+        if validate_inputs:
+            validate_user_data(user_data)
         route_result = (
             route_results[index]
             if route_results is not None
@@ -287,6 +291,54 @@ def build_llm_prompt(payload: dict[str, Any]) -> str:
     return "\n".join(prompt_lines)
 
 
+def build_framework_prompt_from_data(
+    users_data: dict[str, Any] | list[dict[str, Any]],
+    route_results: dict[str, Any] | list[dict[str, Any]] | None = None,
+    extraction_items_path: str | Path | None = None,
+    validate_inputs: bool = True,
+) -> dict[str, Any]:
+    """从已准备好的用户数据和路由结果生成 framework payload 与 prompt。"""
+
+    normalized_users = normalize_user_inputs(users_data)
+    normalized_routes = (
+        normalize_route_inputs(route_results)
+        if route_results is not None
+        else None
+    )
+    extraction_items = (
+        load_extraction_items(extraction_items_path)
+        if extraction_items_path
+        else load_extraction_items()
+    )
+    payload = build_framework_payload(
+        normalized_users,
+        normalized_routes,
+        extraction_items,
+        validate_inputs=validate_inputs,
+    )
+    return {
+        "users_data": normalized_users,
+        "payload": payload,
+        "prompt": build_llm_prompt(payload),
+    }
+
+
+def build_framework_prompt_from_file(
+    input_path: str | Path,
+    route_path: str | Path | None = None,
+    extraction_items_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """从输入文件生成 framework payload 与 prompt。"""
+
+    raw_user_input = load_user_input(input_path)
+    route_results = load_user_input(route_path) if route_path else None
+    return build_framework_prompt_from_data(
+        raw_user_input,
+        route_results=route_results,
+        extraction_items_path=extraction_items_path,
+    )
+
+
 def save_text_output(content: str, output_path: str | Path) -> None:
     Path(output_path).write_text(content, encoding="utf-8")
 
@@ -321,17 +373,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-
-    raw_user_input = load_user_input(args.input)
-    users_data = normalize_user_inputs(raw_user_input)
-
-    route_results = None
-    if args.route:
-        route_results = normalize_route_inputs(load_user_input(args.route))
-
-    extraction_items = load_extraction_items(args.extraction_items)
-    payload = build_framework_payload(users_data, route_results, extraction_items)
-    prompt = build_llm_prompt(payload)
+    result = build_framework_prompt_from_file(
+        args.input,
+        route_path=args.route,
+        extraction_items_path=args.extraction_items,
+    )
+    payload = result["payload"]
+    prompt = result["prompt"]
 
     print("===== Framework Payload =====")
     print(json.dumps(payload, ensure_ascii=False, indent=2))

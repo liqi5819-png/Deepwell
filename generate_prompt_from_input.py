@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -288,6 +288,18 @@ def build_base_prompt(user_data: dict[str, Any]) -> str:
     return "\n".join(prompt_lines)
 
 
+def build_base_prompt_from_file(input_path: str | Path) -> dict[str, Any]:
+    """从输入文件生成基础 prompt 与路由结果。"""
+
+    user_data = load_user_input(input_path)
+    validate_user_data(user_data)
+    return {
+        "user_data": user_data,
+        "prompt": build_base_prompt(user_data),
+        "route_result": route_user_to_guideline(user_data),
+    }
+
+
 def route_user_to_guideline(
     user_data: dict[str, Any], knowledge_base: Optional[dict[str, GuidelineMetadata]] = None
 ) -> dict[str, Any]:
@@ -343,11 +355,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    user_data = load_user_input(args.input)
-    validate_user_data(user_data)
-
-    prompt = build_base_prompt(user_data)
-    route_result = route_user_to_guideline(user_data)
+    result = build_base_prompt_from_file(args.input)
+    prompt = result["prompt"]
+    route_result = result["route_result"]
 
     print("===== 基础 Prompt =====")
     print(prompt)
