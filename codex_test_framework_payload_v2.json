@@ -1,0 +1,74 @@
+{
+  "task_name": "guideline_restriction_extraction",
+  "version": "0.2",
+  "generated_at": "2026-04-10T18:16:29",
+  "note": "该结构用于给 LLM 生成用户级限制信息。当前优先抽取可机器校验的饮食约束，运动约束仅在指南中有明确量化规则时输出。",
+  "extraction_items": [
+    "每日菜单中的食物组种类数",
+    "是否三餐全部使用精制谷物",
+    "每日菜单中包含的优质蛋白种类数",
+    "每日菜单中蔬菜克重范围",
+    "每日菜单中水果克重范围",
+    "每日菜单中谷类克重范围",
+    "每日菜单中液态奶摄入量范围",
+    "每日菜单中膳食纤维克重范围",
+    "每日菜单中维生素C含量范围",
+    "每日菜单中钙含量范围",
+    "每日菜单中铁含量范围",
+    "每日菜单中总脂肪含量范围",
+    "每日菜单中饱和脂肪含量范围",
+    "每日菜单中胆固醇含量范围",
+    "每日菜单中蛋白质能量比例范围",
+    "每日菜单中钠含量范围",
+    "每日菜单中三大营养素比例范围",
+    "每日菜单中脂肪酸比例范围",
+    "每日推荐能量摄入范围"
+  ],
+  "users": [
+    {
+      "user_index": 1,
+      "user_summary": {
+        "user_id": "user_1",
+        "age_years": 32,
+        "sex": "女",
+        "height_cm": 165,
+        "weight_kg": 58,
+        "waist_cm": 72,
+        "bmi": 21.3,
+        "labor_intensity": "轻体力劳动",
+        "goal_type": "健康生活方式",
+        "food_allergy": "无",
+        "health_status": "健康"
+      },
+      "route_result": {
+        "profile_tags": [
+          "bmi_lt_24",
+          "healthy",
+          "healthy_lifestyle"
+        ],
+        "bmi": 21.3,
+        "mapping_rule": {
+          "goal_type": "healthy_lifestyle",
+          "bmi_label": "BMI<24",
+          "guideline_files": [
+            "一般饮食.pdf",
+            "一般体重管理.pdf"
+          ]
+        },
+        "disease_reasons": [],
+        "selected_guidelines": [
+          {
+            "file_name": "一般饮食.pdf",
+            "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般饮食.pdf",
+            "exists": true
+          },
+          {
+            "file_name": "一般体重管理.pdf",
+            "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般体重管理.pdf",
+            "exists": true
+          }
+        ]
+      }
+    }
+  ]
+}

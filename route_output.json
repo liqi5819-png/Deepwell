@@ -1,0 +1,43 @@
+{
+  "profile_tags": [
+    "healthy",
+    "healthy_lifestyle"
+  ],
+  "bmi": 21.3,
+  "mapping_rule": {
+    "goal_type": "healthy_lifestyle",
+    "bmi_label": "BMI<24",
+    "guideline_files": [
+      "一般饮食.pdf",
+      "一般体重管理.pdf"
+    ]
+  },
+  "selected_guidelines": [
+    {
+      "file_name": "一般饮食.pdf",
+      "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般饮食.pdf",
+      "exists": true
+    },
+    {
+      "file_name": "一般体重管理.pdf",
+      "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般体重管理.pdf",
+      "exists": true
+    }
+  ],
+  "candidate_guidelines": [
+    {
+      "guideline_id": "placeholder_general_nutrition",
+      "guideline_name": "通用营养与生活方式指南（占位）",
+      "file_path": null,
+      "target_population_tags": [
+        "healthy",
+        "healthy_lifestyle"
+      ],
+      "description": "用于演示注册表结构。后续可替换为真实 PDF 路径和标签。",
+      "enabled": false
+    }
+  ],
+  "selected_guideline": null,
+  "reason": "当前已接入基于 goal_type、BMI 和疾病状态的临时映射规则。这不是最终版本，后续可继续调整规则表或迁移到 frameworks.py。",
+  "disease_reasons": []
+}
