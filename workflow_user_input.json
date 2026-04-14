@@ -1,0 +1,45 @@
+{
+  "basic_info": {
+    "age_years": 32,
+    "sex": "female",
+    "height_cm": 165,
+    "weight_kg": 58,
+    "waist_cm": 72
+  },
+  "physical_activity": {
+    "labor_intensity": "light"
+  },
+  "goal": {
+    "goal_type": "healthy_lifestyle"
+  },
+  "food_allergy": {
+    "has_food_allergy": false,
+    "allergy_foods": []
+  },
+  "health_status": {
+    "healthy": true,
+    "diabetes": {
+      "has_diabetes": false,
+      "diabetes_type": null,
+      "uses_insulin": null
+    },
+    "fatty_liver": {
+      "has_fatty_liver": false,
+      "severity": null
+    },
+    "chronic_kidney_disease": {
+      "has_ckd": false,
+      "stage_group": null
+    },
+    "hypertension": {
+      "has_hypertension": false
+    },
+    "hyperuricemia_or_gout": {
+      "has_hyperuricemia_or_gout": false
+    },
+    "hyperthyroidism": {
+      "has_hyperthyroidism": false
+    }
+  },
+  "user_id": "user_1"
+}

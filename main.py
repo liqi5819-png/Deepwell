@@ -1,79 +1,175 @@
 from __future__ import annotations
 
-import argparse, json
+import argparse
+import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from frameworks import build_framework_prompt_from_data, build_framework_prompt_from_file
-from generate_prompt_from_input import build_base_prompt_from_file
-from llm_runner import CFG, LLMRunner
+from tools.frameworks import build_framework_prompt_from_data
+from tools.knowledge import resolve_user_constraints_path
+from tools.lifestyle import build_lifestyle_prompt_from_data
+from tools.User_Profiling import (
+    ROUTE_OUTPUT_FILE,
+    build_base_prompt_from_data,
+    ensure_user_ids,
+    load_user_input,
+    normalize_user_inputs,
+    restore_user_input_shape,
+    save_json_output,
+)
+from tools.llm_runner import CFG, LLMRunner
 
 
-class WorkflowError(RuntimeError): pass
+ROOT_DIR = Path(__file__).resolve().parent
+BASE_PROMPT_FILE = ROOT_DIR / "base_prompt.txt"
+FRAMEWORK_PROMPT_FILE = ROOT_DIR / "framework_prompt.txt"
+LIFESTYLE_PROMPT_FILE = ROOT_DIR / "lifestyle_prompt.txt"
+NORMALIZED_INPUT_FILE = ROOT_DIR / "workflow_user_input.json"
 
 
-def read(x): return Path(x).read_text(encoding="utf-8")
-def write(x, v): Path(x).write_text(json.dumps(v, ensure_ascii=False, indent=2) if isinstance(v, (dict, list)) else str(v), encoding="utf-8")
-def pick(a, k): return getattr(a, k, None) or (read(getattr(a, f"{k}_file")) if getattr(a, f"{k}_file", None) else None)
+def build_constraints_file_path(user_id: str) -> Path:
+    return resolve_user_constraints_path(user_id)
 
 
-def build_prompts(a):
-    if not a.input: raise WorkflowError("需要 --input。")
-    if a.mode == "workflow":
-        base_result = build_base_prompt_from_file(a.input)
-        framework_result = (
-            build_framework_prompt_from_file(a.input, route_path=a.route, extraction_items_path=a.extraction_items)
-            if a.route
-            else build_framework_prompt_from_data(
-                base_result["user_data"],
-                route_results=base_result["route_result"],
-                extraction_items_path=a.extraction_items,
-                validate_inputs=False,
-            )
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Workflow 入口：使用 knowledge.py 内置规则生成 "
+            "base/framework/lifestyle prompt，并按需调用指定 LLM。"
         )
-        return {
-            "base_prompt": base_result["prompt"],
-            "framework_prompt": framework_result["prompt"],
-        }
-    out = {}
-    if a.mode == "base_prompt":
-        out["base_prompt"] = build_base_prompt_from_file(a.input)["prompt"]
-    if a.mode == "framework_prompt":
-        out["framework_prompt"] = build_framework_prompt_from_file(
-            a.input, route_path=a.route, extraction_items_path=a.extraction_items
+    )
+    parser.add_argument("--provider", choices=list(CFG), default="kimi")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--model")
+    parser.add_argument("--base-url")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--print-prompt", action="store_true")
+    parser.add_argument("--output-json")
+    parser.add_argument(
+        "--constraints-file",
+        help=(
+            "可选：framework_prompt 的 LLM 回复保存路径；"
+            '未传时默认写入 knowledge/{user_id}_constraints.json'
+        ),
+    )
+    return parser.parse_args()
+
+
+def run_prompt_stage(
+    *,
+    stage_name: str,
+    prompt: str,
+    runner: LLMRunner | None,
+    print_prompt: bool,
+    dry_run: bool,
+    response_output_path: Path | None = None,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {"prompt": prompt}
+
+    if print_prompt or dry_run:
+        print(f"===== {stage_name} =====\n{prompt}\n")
+
+    if runner is None:
+        return row
+
+    try:
+        result = runner.run(prompt, None)
+        row.update(result)
+        print(f"===== {stage_name}_response =====\n{result['response_text']}\n")
+        if response_output_path is not None:
+            response_output_path.write_text(result["response_text"], encoding="utf-8")
+            row["saved_constraints_file"] = str(response_output_path)
+    except Exception as exc:
+        row["error"] = str(exc)
+        print(f"===== {stage_name}_error =====\n{exc}\n")
+
+    return row
+
+
+def main() -> None:
+    args = parse_args()
+
+    users_data = ensure_user_ids(normalize_user_inputs(load_user_input(args.input)))
+    normalized_input = restore_user_input_shape(users_data)
+    save_json_output(normalized_input, NORMALIZED_INPUT_FILE)
+
+    if len(users_data) != 1:
+        raise ValueError("main.py 当前仅支持单用户 workflow 输入。")
+    user_id = users_data[0]["user_id"]
+
+    base = build_base_prompt_from_data(users_data[0])
+    save_json_output(base["route_result"], ROUTE_OUTPUT_FILE)
+
+    framework = build_framework_prompt_from_data(
+        users_data,
+        route_results=base["route_result"],
+    )["prompt"]
+
+    constraints_path = (
+        Path(args.constraints_file)
+        if args.constraints_file
+        else build_constraints_file_path(user_id)
+    )
+
+    BASE_PROMPT_FILE.write_text(base["prompt"], encoding="utf-8")
+    FRAMEWORK_PROMPT_FILE.write_text(framework, encoding="utf-8")
+
+    output = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "mode": "workflow",
+        "provider": args.provider,
+        "model": args.model or CFG[args.provider][1],
+        "base_url": args.base_url or CFG[args.provider][2],
+        "system_prompt": None,
+        "results": {},
+        "normalized_input_file": str(NORMALIZED_INPUT_FILE),
+        "constraints_file": str(constraints_path),
+        "lifestyle_prompt_file": str(LIFESTYLE_PROMPT_FILE),
+    }
+
+    runner = None if args.dry_run else LLMRunner(
+        args.provider, args.model, None, args.base_url
+    )
+
+    output["results"]["base_prompt"] = run_prompt_stage(
+        stage_name="base_prompt",
+        prompt=base["prompt"],
+        runner=runner,
+        print_prompt=args.print_prompt,
+        dry_run=args.dry_run,
+    )
+    output["results"]["framework_prompt"] = run_prompt_stage(
+        stage_name="framework_prompt",
+        prompt=framework,
+        runner=runner,
+        print_prompt=args.print_prompt,
+        dry_run=args.dry_run,
+        response_output_path=constraints_path,
+    )
+
+    try:
+        lifestyle = build_lifestyle_prompt_from_data(
+            users_data,
+            constraints_path=constraints_path,
         )["prompt"]
-    return out
+        LIFESTYLE_PROMPT_FILE.write_text(lifestyle, encoding="utf-8")
+        output["results"]["lifestyle_prompt"] = run_prompt_stage(
+            stage_name="lifestyle_prompt",
+            prompt=lifestyle,
+            runner=runner,
+            print_prompt=args.print_prompt,
+            dry_run=args.dry_run,
+        )
+    except Exception as exc:
+        output["results"]["lifestyle_prompt"] = {"error": str(exc)}
+        print(f"===== lifestyle_prompt_error =====\n{exc}\n")
+
+    if args.output_json:
+        Path(args.output_json).write_text(
+            json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
 
-def args():
-    x = argparse.ArgumentParser(description="流程入口：生成 base/framework prompt，并调用指定 LLM。")
-    x.add_argument("--mode", choices=["workflow", "base_prompt", "framework_prompt"], default="workflow")
-    x.add_argument("--provider", choices=list(CFG), default="kimi")
-    x.add_argument("--input", required=True); x.add_argument("--route"); x.add_argument("--extraction-items")
-    x.add_argument("--system-prompt"); x.add_argument("--system-prompt-file")
-    x.add_argument("--model"); x.add_argument("--api-key"); x.add_argument("--base-url")
-    x.add_argument("--dry-run", action="store_true"); x.add_argument("--print-prompt", action="store_true")
-    x.add_argument("--output-json")
-    return x.parse_args()
-
-
-def main():
-    a = args(); sp = pick(a, "system_prompt"); prompts = build_prompts(a)
-    out = {"generated_at": datetime.now().isoformat(timespec="seconds"), "mode": a.mode, "provider": a.provider, "model": a.model or CFG[a.provider][1], "base_url": a.base_url or CFG[a.provider][2], "system_prompt": sp, "results": {}}
-    runner = None if a.dry_run else LLMRunner(a.provider, a.model, a.api_key, a.base_url)
-    for name, prompt in prompts.items():
-        row = {"prompt": prompt}
-        if a.print_prompt or a.dry_run: print(f"===== {name} =====\n{prompt}\n")
-        if not a.dry_run:
-            try:
-                res = runner.run(prompt, sp)
-                row.update(res)
-                print(f"===== {name}_response =====\n{res['response_text']}\n")
-            except Exception as e:
-                row["error"] = str(e)
-                print(f"===== {name}_error =====\n{e}\n")
-        out["results"][name] = row
-    if a.output_json: write(a.output_json, out)
-
-
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

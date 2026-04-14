@@ -1,0 +1,218 @@
+{
+  "task_name": "lifestyle_suggestion_prompt",
+  "version": "0.1",
+  "generated_at": "2026-04-14T17:05:48",
+  "note": "该结构用于给 LLM 生成生活方式建议。",
+  "user_summary": {
+    "user_id": "user_1",
+    "age_years": 32,
+    "sex": "女",
+    "height_cm": 165,
+    "weight_kg": 58,
+    "waist_cm": 72,
+    "bmi": 21.3,
+    "labor_intensity": "轻体力劳动",
+    "goal_type": "健康生活方式",
+    "food_allergy": "无",
+    "health_status": "健康"
+  },
+  "constraints_file": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\user_1_constraints.json",
+  "user_constraints": {
+    "version": "user_specific_restrictions_v2",
+    "user_id": "user_1",
+    "user_summary": {
+      "age_years": 32,
+      "sex": "女",
+      "bmi": 21.3,
+      "goal_type": "健康生活方式",
+      "health_status": "健康",
+      "labor_intensity": "轻体力劳动"
+    },
+    "source_guidelines": [
+      {
+        "file_name": "一般饮食.pdf",
+        "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般饮食.pdf"
+      },
+      {
+        "file_name": "一般体重管理.pdf",
+        "file_path": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\一般体重管理.pdf"
+      }
+    ],
+    "dietary_constraints": [
+      {
+        "metric_key": "food_group_count_per_day",
+        "display_name": "每日菜单中的食物组种类数",
+        "operator": ">=",
+        "min_value": null,
+        "max_value": null,
+        "target_value": 12,
+        "unit": "types/day",
+        "scope": "per_day",
+        "reason": "指南建议平均每天摄入12种以上食物，每周25种以上。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "refined_grains_all_meals",
+        "display_name": "是否三餐全部使用精制谷物",
+        "operator": "boolean_equals",
+        "min_value": null,
+        "max_value": null,
+        "target_value": false,
+        "unit": "boolean",
+        "scope": "whole_menu",
+        "reason": "指南建议每日谷类中包含全谷物和杂豆50-150g，因此不宜三餐全部使用精制谷物。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "vegetable_grams_per_day",
+        "display_name": "每日菜单中蔬菜克重",
+        "operator": "between",
+        "min_value": 300,
+        "max_value": 500,
+        "target_value": null,
+        "unit": "g/day",
+        "scope": "per_day",
+        "reason": "平衡膳食宝塔建议成年人每天摄入蔬菜300-500g。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "fruit_grams_per_day",
+        "display_name": "每日菜单中水果克重",
+        "operator": "between",
+        "min_value": 200,
+        "max_value": 350,
+        "target_value": null,
+        "unit": "g/day",
+        "scope": "per_day",
+        "reason": "平衡膳食宝塔建议成年人每天摄入新鲜水果200-350g。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "grain_grams_per_day",
+        "display_name": "每日菜单中谷类克重",
+        "operator": "between",
+        "min_value": 200,
+        "max_value": 300,
+        "target_value": null,
+        "unit": "g/day",
+        "scope": "per_day",
+        "reason": "平衡膳食宝塔建议成年人每天摄入谷类200-300g，其中包含全谷物和杂豆50-150g。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "milk_ml_per_day",
+        "display_name": "每日菜单中液态奶摄入量",
+        "operator": "between",
+        "min_value": 300,
+        "max_value": 500,
+        "target_value": null,
+        "unit": "mL/day",
+        "scope": "per_day",
+        "reason": "平衡膳食宝塔建议成年人每天摄入奶及奶制品300-500g，液态奶可按约300-500mL对应。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "protein_energy_ratio_percent",
+        "display_name": "每日菜单中蛋白质能量比例",
+        "operator": "between",
+        "min_value": 10,
+        "max_value": 15,
+        "target_value": null,
+        "unit": "%energy",
+        "scope": "per_day",
+        "reason": "指南给出的平衡膳食模式中，蛋白质供能比为10%-15%。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "sodium_mg_per_day",
+        "display_name": "每日菜单中钠含量",
+        "operator": "between",
+        "min_value": 0,
+        "max_value": 1967,
+        "target_value": null,
+        "unit": "mg/day",
+        "scope": "per_day",
+        "reason": "指南建议食盐不超过5g/天，按氯化钠换算约对应钠不超过1967mg/天。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "macro_ratio_percent",
+        "display_name": "每日菜单中三大营养素比例范围",
+        "operator": "enum_equals",
+        "min_value": null,
+        "max_value": null,
+        "target_value": "carbohydrate=50-65%;protein=10-15%;fat=20-30%",
+        "unit": "%energy",
+        "scope": "per_day",
+        "reason": "指南给出的平衡膳食模式中，碳水化合物、蛋白质和脂肪供能比分别为50%-65%、10%-15%和20%-30%。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "metric_key": "energy_kcal_per_day",
+        "display_name": "每日推荐能量摄入范围",
+        "operator": "between",
+        "min_value": 1600,
+        "max_value": 2400,
+        "target_value": null,
+        "unit": "kcal/day",
+        "scope": "per_day",
+        "reason": "平衡膳食宝塔建议食物量适用于2岁以上健康人群，18岁及以上成年人对应的能量需要量范围为1600-2400kcal/天。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      }
+    ],
+    "exercise_constraints": [
+      {
+        "item_name": "中等强度身体活动",
+        "value": 150,
+        "unit": "min/week",
+        "frequency_or_duration": "每周至少5天，累计至少150分钟",
+        "reason": "指南建议坚持日常身体活动，每周至少5天中等强度身体活动，累计150分钟以上。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      },
+      {
+        "item_name": "抗阻训练",
+        "value": "2-3",
+        "unit": "times/week",
+        "frequency_or_duration": "每周2~3次",
+        "reason": "健康体重维持部分提出每周至少150分钟中等强度有氧运动，并进行2~3次抗阻训练。",
+        "source_guidelines": [
+          "一般体重管理.pdf"
+        ]
+      },
+      {
+        "item_name": "主动身体活动步数",
+        "value": 6000,
+        "unit": "steps/day",
+        "frequency_or_duration": "每日",
+        "reason": "指南建议主动身体活动最好每天达到6000步。",
+        "source_guidelines": [
+          "一般饮食.pdf"
+        ]
+      }
+    ],
+    "special_notes": [],
+    "constraints_file": "E:\\BaiduSyncdisk\\各种课题\\AI生活方式干预-DeepWellstyle\\DeepWellstyle\\智能体构建\\New_Wolkflow_0408\\knowledge\\user_1_constraints.json"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "version": "user_constraints_v1",
+  "user_id": "user_1",
+  "dietary_constraints": [
+    {
+      "metric_key": "food_group_count_per_day",
+      "display_name": "每日菜单中的食物组种类数",
+      "operator": ">=",
+      "unit": "types/day",
+      "scope": "per_day",
+      "target_value": 12
+    },
+    {
+      "metric_key": "refined_grains_all_meals",
+      "display_name": "是否三餐全部使用精制谷物",
+      "operator": "boolean_equals",
+      "unit": "boolean",
+      "scope": "whole_menu",
+      "target_value": false
+    },
+    {
+      "metric_key": "vegetable_grams_per_day",
+      "display_name": "每日菜单中蔬菜克重范围",
+      "operator": "between",
+      "unit": "g/day",
+      "scope": "per_day",
+      "min_value": 300,
+      "max_value": 500
+    },
+    {
+      "metric_key": "fruit_grams_per_day",
+      "display_name": "每日菜单中水果克重范围",
+      "operator": "between",
+      "unit": "g/day",
+      "scope": "per_day",
+      "min_value": 200,
+      "max_value": 350
+    },
+    {
+      "metric_key": "grain_grams_per_day",
+      "display_name": "每日菜单中谷类克重范围",
+      "operator": "between",
+      "unit": "g/day",
+      "scope": "per_day",
+      "min_value": 200,
+      "max_value": 300
+    },
+    {
+      "metric_key": "milk_ml_per_day",
+      "display_name": "每日菜单中液态奶摄入量范围",
+      "operator": "between",
+      "unit": "mL/day",
+      "scope": "per_day",
+      "min_value": 300,
+      "max_value": 500
+    },
+    {
+      "metric_key": "protein_energy_ratio_percent",
+      "display_name": "每日菜单中蛋白质能量比例范围",
+      "operator": "between",
+      "unit": "%energy",
+      "scope": "per_day",
+      "min_value": 10,
+      "max_value": 15
+    },
+    {
+      "metric_key": "macro_ratio_percent",
+      "display_name": "每日菜单中三大营养素比例范围",
+      "operator": "=",
+      "unit": "%energy",
+      "scope": "per_day",
+      "target_value": "碳水化合物50%-65% / 脂肪20%-30% / 蛋白质10%-15%"
+    },
+    {
+      "metric_key": "energy_kcal_per_day",
+      "display_name": "每日推荐能量摄入范围",
+      "operator": "between",
+      "unit": "kcal/day",
+      "scope": "per_day",
+      "min_value": 1600,
+      "max_value": 2400
+    }
+  ],
+  "exercise_constraints": [
+    {
+      "item_name": "daily_steps",
+      "value": 6000,
+      "unit": "steps/day",
+      "frequency_or_duration": "daily minimum"
+    },
+    {
+      "item_name": "moderate_aerobic_activity",
+      "value": 150,
+      "unit": "min/week",
+      "frequency_or_duration": "weekly minimum"
+    },
+    {
+      "item_name": "resistance_training",
+      "value": "2~3",
+      "unit": "times/week",
+      "frequency_or_duration": "weekly"
+    }
+  ],
+  "special_notes": [
+    "平均每天摄入12种以上食物，每周达到25种以上。",
+    "主食应包含全谷物和杂豆50~150g/天，以及薯类50~100g/天；减少精白米面摄入。",
+    "三餐食物能量分配一般为早餐30%、午餐40%、晚餐30%。",
+    "烹调油25~30g/天，食盐不超过5g/天，饮水1500~1700mL/天。",
+    "减少高糖、高油、高盐食物，优先采用蒸、煮、炖、拌等烹饪方式，减少煎、烤、炸。",
+    "减少久坐，将身体活动融入日常生活。"
+  ]
+}

@@ -1,44 +1,70 @@
 # New_Workflow_0408
 
-这是一个面向“结构化健康用户输入 -> 基础 Prompt -> 用户路由”的 Python 小型工作流初版。
+这个目录目前是一套“用户输入 -> 指南路由 -> Prompt 生成 -> 可选 LLM 调用”的工作流。
 
-当前版本只完成以下能力：
+## 目录结构
 
-- 读取标准化用户输入 JSON
-- 做最基本的关键字段检查
-- 生成供 LLM 使用的中文基础 prompt
-- 提取用户特征标签并输出指南路由结果
-- 提供独立的指南注册与查询框架
+- `main.py`
+  - workflow 总入口
+- `tools/User_Profiling.py`
+  - 读取标准化用户输入
+  - 校验字段
+  - 计算 BMI
+  - 按 `tools/knowledge.py` 的内置规则完成指南路由
+  - 生成 `base_prompt`
+- `tools/frameworks.py`
+  - 接收用户输入和路由结果
+  - 生成约束抽取用的 `framework payload`
+  - 生成 `framework_prompt`
+- `tools/lifestyle.py`
+  - 接收用户输入和对应用户约束文件
+  - 默认从 `knowledge/{user_id}_constraints.json` 读取用户约束
+  - 生成生活方式建议用的 `lifestyle_prompt`
+- `tools/knowledge.py`
+  - 维护指南注册表
+  - 内置目标类型 + BMI 的基础映射规则
+  - 内置疾病附加规则
+  - 维护用户约束文件的默认路径规则
+- `tools/llm_runner.py`
+  - 独立的 LLM 调用工具层
+- `knowledge/`
+  - PDF 指南与营养数据等知识文件
 
-当前版本明确不包含以下能力：
+## 当前流程
 
-- 不读取 PDF 指南正文
-- 不调用 LLM
-- 不写死正式的“用户类型 -> 指南”映射规则
+`main.py` 固定执行 workflow：
 
-## 文件说明
+1. 读取用户输入 JSON
+2. 调用 `tools/User_Profiling.py` 对应逻辑生成 `base_prompt`
+3. 使用 `tools/knowledge.py` 的内置映射规则完成指南路由
+4. 把路由结果写到根目录 `route_output.json`
+5. 调用 `tools/frameworks.py` 生成 `framework_prompt`
+6. 调用 `tools/lifestyle.py`，结合用户信息和用户约束生成 `lifestyle_prompt`
+7. 如果不是 `--dry-run`，再调用 `tools/llm_runner.py` 请求模型
 
-- `generate_prompt_from_input.py`
-  - 主脚本
-  - 负责输入读取、基础校验、用户标签提取、Prompt 组装、路由结果输出、CLI 入口
+## knowledge.py 规则
 
-- `knowledge.py`
-  - 指南知识注册与管理层
-  - 负责指南元数据的数据结构、注册表、候选查询、按 ID 查询
-  - 当前只放 placeholder 数据，后续可以替换为真实指南配置
+`tools/knowledge.py` 不再依赖运行时解析 `knowledge/指南映射信息.txt`。
 
-- `test_input_healthy_lifestyle.json`
-  - 健康生活方式场景的标准化输入样例
+当前已内置这些基础规则：
 
-- `prompt_output.txt`
-  - 使用测试样例运行后输出的基础 prompt
+- `healthy_lifestyle + BMI<24 -> 一般饮食 + 一般体重管理`
+- `healthy_lifestyle + 24<=BMI<32.5 -> 一般饮食 + 一般体重管理 + 肥胖饮食`
+- `healthy_lifestyle + BMI>=32.5 -> 一般饮食 + 一般体重管理 + 肥胖饮食`
+- `weight_loss + 18.5<=BMI<24 -> 一般饮食 + 一般体重管理 + 肥胖饮食`
+- `weight_loss + 24<=BMI<32.5 -> 一般饮食 + 一般体重管理 + 肥胖饮食`
+- `weight_loss + BMI>=32.5 -> 一般饮食 + 一般体重管理 + 肥胖饮食`
 
-- `route_output.json`
-  - 使用测试样例运行后输出的结构化路由结果
+当前已内置这些疾病附加规则：
 
-## 输入结构
+- `糖尿病 -> 糖尿病饮食 + 糖尿病运动`
+- `高血压 -> 高血压饮食`
+- `慢性肾病 -> 慢性肾病饮食`
+- `高尿酸血症与痛风 -> 高尿酸血症与痛风饮食`
 
-顶层字段：
+## 输入要求
+
+输入 JSON 当前依赖这些顶层字段：
 
 - `basic_info`
 - `physical_activity`
@@ -46,16 +72,17 @@
 - `food_allergy`
 - `health_status`
 
-其中 `goal` 当前仅使用：
+其中核心字段包括：
 
-- `goal_type`
+- `basic_info.age_years`
+- `basic_info.sex`
+- `basic_info.height_cm`
+- `basic_info.weight_kg`
+- `basic_info.waist_cm`
+- `physical_activity.labor_intensity`
+- `goal.goal_type`
 
-没有使用以下字段：
-
-- `duration_weeks`
-- `target_change_kg`
-
-`health_status` 当前支持的子结构：
+`health_status` 当前支持：
 
 - `healthy`
 - `diabetes`
@@ -67,76 +94,126 @@
 
 ## 运行方式
 
-在当前目录下运行：
+### 1. 只生成 base prompt 和 route result
 
 ```bash
-python generate_prompt_from_input.py --input test_input_healthy_lifestyle.json
+python -m tools.User_Profiling --input test_input_healthy_lifestyle.json
 ```
 
-如果希望把输出写入文件：
+如果同时写出文件：
 
 ```bash
-python generate_prompt_from_input.py --input test_input_healthy_lifestyle.json --output_prompt prompt_output.txt --output_route route_output.json
+python -m tools.User_Profiling --input test_input_healthy_lifestyle.json --output_prompt prompt_output.txt --output_route route_output.json
 ```
 
-## 当前测试结果
+### 2. 只生成 framework prompt
 
-已使用以下命令完成测试：
+`tools/frameworks.py` 现在要求显式传入路由结果文件。
 
 ```bash
-python generate_prompt_from_input.py --input test_input_healthy_lifestyle.json --output_prompt prompt_output.txt --output_route route_output.json
+python -m tools.frameworks --input test_input_healthy_lifestyle.json --route route_output.json --output_prompt framework_prompt.txt --output_payload framework_payload.json
 ```
 
-测试结果摘要：
+### 3. 跑完整 workflow
 
-- 成功读取 `test_input_healthy_lifestyle.json`
-- 成功生成中文基础 prompt
-- 成功输出结构化路由结果
-- 当前样例的 `profile_tags` 为：
-  - `healthy`
-  - `healthy_lifestyle`
-- 当前命中的候选指南为占位项：
-  - `placeholder_general_nutrition`
-- 当前 `selected_guideline` 仍为 `null`
-  - 原因：正式映射表尚未配置
+只生成流程结果，不调用 LLM：
 
-## 模块协作关系
+```bash
+python main.py --input test_input_healthy_lifestyle.json --provider kimi --dry-run --output-json workflow_dry_run.json
+```
+默认会把约束结果保存到 `knowledge/{user_id}_constraints.json`，例如 `knowledge/user_1_constraints.json`。
 
-### 1. generate_prompt_from_input.py
+生成 prompt 并调用 LLM：
 
-主流程如下：
+```bash
+python main.py --input test_input_healthy_lifestyle.json --provider kimi --output-json workflow_output.json
+```
+如果需要覆盖默认路径，可以显式传入：
+```bash
+python main.py --input test_input_healthy_lifestyle.json --provider kimi --constraints-file knowledge/user_1_constraints.json --output-json workflow_output.json
+```
 
-1. 读取 JSON 文件
-2. 校验关键字段
-3. 提取用户 profile tags
-4. 生成基础 prompt
-5. 调用 `knowledge.py` 查询候选指南
-6. 输出 prompt 和路由结果
+### 4. 单独调用 LLM 工具层
 
-### 2. knowledge.py
+```bash
+python -m tools.llm_runner --provider kimi --prompt "请只回复一句测试信息"
+```
 
-当前职责如下：
+### 5. 生成生活方式建议 prompt
 
-1. 定义 `GuidelineMetadata`
-2. 维护指南注册表
-3. 提供候选指南查询接口
-4. 提供按 ID 查询接口
+```bash
+python -m tools.lifestyle --input test_input_healthy_lifestyle.json --output_prompt lifestyle_prompt.txt --output_payload lifestyle_payload.json
+```
 
-后续建议继续保持这个职责边界，不要把 PDF 解析或 LLM 调用塞进这个模块。
+如果需要显式指定用户约束文件，可以传入：
 
-## 后续扩展建议
+```bash
+python -m tools.lifestyle --input test_input_healthy_lifestyle.json --constraints knowledge/user_1_constraints.json --output_prompt lifestyle_prompt.txt
+```
 
-建议优先补下面两层：
+## main.py 参数
 
-1. 用户分流规则表
-   - 将“用户标签 -> 指南选择”做成独立配置或规则模块
+`main.py` 当前只保留最小参数集合：
 
-2. 指南资源配置
-   - 在 `knowledge.py` 或单独配置文件中维护真实的 `guideline_id`、`guideline_name`、`file_path`、`target_population_tags`
+- `--provider`
+  - 模型提供方，默认 `kimi`
+- `--input`
+  - 用户输入 JSON 路径，必填
+- `--model`
+  - 可选，覆盖默认模型名
+- `--base-url`
+  - 可选，覆盖默认接口地址
+- `--dry-run`
+  - 只跑流程，不调用 LLM
+- `--print-prompt`
+  - 打印生成的 prompt
+- `--output-json`
+  - 把 workflow 输出写到 JSON 文件
+- `--constraints-file`
+  - 可选：指定 `framework_prompt` 的 LLM 回复保存路径；未传时默认写入 `knowledge/{user_id}_constraints.json`
 
-后续如果需要，也可以继续增加：
+## workflow 输出结构
 
-- PDF 内容读取模块
-- 指南规则抽取模块
-- Prompt 注入指南约束模块
-- LLM 调用模块
+`main.py` 的输出 JSON 结构大致如下：
+
+```json
+{
+  "generated_at": "...",
+  "mode": "workflow",
+  "provider": "kimi",
+  "model": "...",
+  "base_url": "...",
+  "system_prompt": null,
+  "constraints_file": "...",
+  "lifestyle_prompt_file": "...",
+  "results": {
+    "base_prompt": {
+      "prompt": "..."
+    },
+    "framework_prompt": {
+      "prompt": "..."
+    },
+    "lifestyle_prompt": {
+      "prompt": "..."
+    }
+  },
+  "normalized_input_file": "..."
+}
+```
+
+如果不是 `--dry-run`，每个阶段还会附带：
+
+- `response_text`
+- `raw_response`
+
+如果调用失败，会附带：
+
+- `error`
+
+## 说明
+
+- `route_output.json` 是 workflow 运行时生成的中间文件，位于项目根目录
+- `knowledge/user_1_constraints.json` 是默认约束输出文件路径示例；实际命名规则为 `knowledge/{user_id}_constraints.json`
+- `tools/frameworks.py` 不会自动跑路由，它只消费已有的路由结果
+- `main.py` 现在会串联生成 `base_prompt.txt`、`framework_prompt.txt`、`lifestyle_prompt.txt`
+- `tools/llm_runner.py` 负责调用模型，不负责业务编排
